@@ -1,0 +1,3 @@
+﻿CREATE USER [SPEKL\OleynikY]
+  FOR LOGIN [SPEKL\OleynikY]
+GO

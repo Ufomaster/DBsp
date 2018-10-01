@@ -1,0 +1,2 @@
+﻿CREATE SCHEMA [shifts] AUTHORIZATION [dbo]
+GO

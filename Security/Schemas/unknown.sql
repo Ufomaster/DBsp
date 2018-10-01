@@ -1,0 +1,2 @@
+﻿CREATE SCHEMA [unknown] AUTHORIZATION [SPEKL\ChepelN]
+GO

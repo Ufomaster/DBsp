@@ -1,0 +1,3 @@
+﻿CREATE USER [Sync1C]
+  WITHOUT LOGIN
+GO

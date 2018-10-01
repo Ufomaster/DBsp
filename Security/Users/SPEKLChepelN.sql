@@ -1,0 +1,3 @@
+﻿CREATE USER [SPEKL\ChepelN]
+  FOR LOGIN [SPEKL\ChepelN]
+GO

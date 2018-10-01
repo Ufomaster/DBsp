@@ -1,0 +1,3 @@
+﻿CREATE USER [QlikView]
+  WITHOUT LOGIN
+GO

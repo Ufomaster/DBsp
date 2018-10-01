@@ -1,0 +1,2 @@
+﻿CREATE SCHEMA [manufacture] AUTHORIZATION [dbo]
+GO

@@ -1,0 +1,5 @@
+﻿SET QUOTED_IDENTIFIER OFF
+GO
+CREATE DEFAULT [dbo].[DF_IP] AS (CAST( CONNECTIONPROPERTY('client_net_address') as varchar(15))
+)
+GO
