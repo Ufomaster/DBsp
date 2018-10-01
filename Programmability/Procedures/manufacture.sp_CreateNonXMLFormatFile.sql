@@ -21,7 +21,7 @@ BEGIN
         EXEC master..xp_cmdshell @command, no_output
 
         SET @i = 1
-        SET @command = 'CREATE TABLE #TMCImportFile (ID int IDENTITY(1,1) NOT NULL, '
+--        SET @command = 'CREATE TABLE #TMCImportFile (ID int IDENTITY(1,1) NOT NULL, '
         WHILE @i <= @ColumnCount
         BEGIN    	
             SET @command = Convert(varchar(3),@i) + '       SQLCHAR      0       255     "' + CASE WHEN @i = @ColumnCount THEN '\r\n' ELSE @Separator END + '"   ' + Convert(varchar(3),@i+1) + '     ' +'Column_' + Convert(varchar(3),@i) + '                 ""'
