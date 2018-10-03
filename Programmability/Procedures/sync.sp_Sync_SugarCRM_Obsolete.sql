@@ -218,3 +218,6 @@ BEGIN
     REVERT;
 END
 GO
+
+GRANT EXECUTE ON [sync].[sp_Sync_SugarCRM_Obsolete] TO [SyncCRM]
+GO

@@ -78,3 +78,6 @@ BEGIN
    DROP TABLE #Stat
 END
 GO
+
+GRANT EXECUTE ON [manufacture].[sp_Stat_ForAllJobsEx] TO [QlikView]
+GO

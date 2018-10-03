@@ -315,3 +315,6 @@ BEGIN
     DROP TABLE #MDSTime
 END
 GO
+
+GRANT EXECUTE ON [manufacture].[sp_ProductionStatistic_Select] TO [QlikView]
+GO

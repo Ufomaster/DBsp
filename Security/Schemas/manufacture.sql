@@ -1,2 +1,8 @@
 ﻿CREATE SCHEMA [manufacture] AUTHORIZATION [dbo]
 GO
+
+GRANT
+  EXECUTE,
+  VIEW DEFINITION
+ON SCHEMA :: [manufacture] TO [SPEKL\ChepelN]
+GO

@@ -35,3 +35,6 @@ BEGIN
     DROP TABLE #Production
 END
 GO
+
+GRANT EXECUTE ON [manufacture].[sp_ProductionStatistic_SelectQlik] TO [QlikView]
+GO

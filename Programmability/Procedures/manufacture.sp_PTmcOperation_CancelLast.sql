@@ -1,25 +1,20 @@
 ﻿SET QUOTED_IDENTIFIER, ANSI_NULLS ON
 GO
 /*$Create:     Zapadinskiy Anatoliy$    $Create date:   21.01.2015$*/
-/*$Modify:     Oleynik Yuriy$    $Modify date:   25.01.2018$*/
+/*$Modify:     Polyatykin Oleksey$    $Modify date:   03.10.2018$*/
 /*$Version:    3.00$   $Description: Отмена операции импорта $*/
 CREATE PROCEDURE [manufacture].[sp_PTmcOperation_CancelLast]
 	@JobStageID int
 AS    
 BEGIN
 	SET NOCOUNT ON
-    DECLARE 
-          @Err int
-        , @query varchar(max)
-        , @querySelect varchar(max)
-        , @queryDel varchar(max)
-        , @CR varchar(5)
-        , @GroupColumnName varchar(max)
-        , @TmcID int
-        , @TypeID int 
-        , @SortOrder int
-        , @into varchar(max)
-        , @OutputTmcID int
+    DECLARE  @Err int, @query varchar(max), @querySelect varchar(max), @queryDel varchar(max), @CR varchar(5),
+             @GroupColumnName varchar(max), @TmcID int, @TypeID int, @SortOrder int, @into varchar(max), @OutputTmcID int,
+             @PalletsTableName varchar(50), @PalletsDetailsTableName varchar(50)
+                     
+    SET @PalletsTableName = 'Pallets_' + Convert(varchar(30), @JobStageID)
+    SET @PalletsDetailsTableName = 'PalletsDetails_' + Convert(varchar(30), @JobStageID)
+    
     DECLARE Cur_col CURSOR STATIC LOCAL FOR
     SELECT
         pitc.GroupColumnName
@@ -45,20 +40,20 @@ BEGIN
         BEGIN
             UPDATE Tmc SET LastAccessDate = GetDate() WHERE ID = @TmcID
             if @SortOrder = 1 set @into = ' INTO #sborkag '   else set @into = ''
-            set @querySelect = isnull(@querySelect + ' UNION ','') +
-                              ' SELECT DISTINCT t.* '+@into+
-                              ' FROM StorageData.pTMC_'+ cast(@TmcID as varchar(max))+' t ' +
-                              ' JOIN StorageData.G_'+ cast(@JobStageID as varchar(max))+' g ON g.'+@GroupColumnName+' = t.ID'
+            SET @querySelect = isnull(@querySelect + ' UNION ','') +
+                           ' SELECT DISTINCT t.* '+@into+
+                           ' FROM StorageData.pTMC_'+ cast(@TmcID as varchar(max))+' t ' +
+                           ' JOIN StorageData.G_'+ cast(@JobStageID as varchar(max))+' g ON g.'+@GroupColumnName+' = t.ID'
 
-            set @queryDel = isnull(@queryDel,'' ) +
+            SET @queryDel = isnull(@queryDel,'' ) +
                            ' DELETE FROM StorageData.pTMC_'+ cast(@TmcID as varchar(max))+'H ' + @CR +
                            ' WHERE pTMCid IN (SELECT ' + @CR +
-                           '               id ' + @CR +
-                           '              FROM #sborkag s ' + @CR +
-                           '              WHERE s.TMCID = '+ cast(@TmcID as varchar(max))+') ' + @CR +
+                           '                      id ' + @CR +
+                           '                  FROM #sborkag s ' + @CR +
+                           '                  WHERE s.TMCID = '+ cast(@TmcID as varchar(max))+') ' + @CR +
                            ' DELETE FROM StorageData.pTMC_'+ cast(@TmcID as varchar(max))+' ' + @CR +
                            ' WHERE id IN (SELECT ' + @CR +
-                           '               id ' + @CR +
+                           '                  id ' + @CR +
                            '              FROM #sborkag s ' + @CR +
                            '              WHERE s.TMCID = '+ cast(@TmcID as varchar(max))+') ' + @CR +
                            ' EXEC manufacture.sp_PTmcGroups_Calculate '+ cast(@TmcID as varchar(max))+' ' + @CR 
@@ -76,64 +71,76 @@ BEGIN
                            ' BEGIN TRY' + @CR +
                            ' IF object_id(''tempdb..#columng'') IS NOT NULL DROP TABLE #columng ' + @CR +
                            ' SELECT ' + @CR +
-                           '    pitc.GroupColumnName ' + @CR +
-                           '   ,pitc.TmcID ' + @CR +
-                           '   ,jsc.TypeID ' + @CR +
-                           '  ,jsc.SortOrder INTO #columng ' + @CR +
+                           '     pitc.GroupColumnName ' + @CR +
+                           '     , pitc.TmcID ' + @CR +
+                           '     , jsc.TypeID ' + @CR +
+                           '     , jsc.SortOrder INTO #columng ' + @CR +
                            ' FROM manufacture.PTmcImportTemplates pit ' + @CR +
                            ' JOIN manufacture.PTmcImportTemplateColumns pitc ' + @CR +
-                           '    ON pit.ID = pitc.TemplateImportID ' + @CR +
+                           '     ON pit.ID = pitc.TemplateImportID ' + @CR +
                            ' JOIN manufacture.JobStageChecks jsc ' + @CR +
-                           '    ON jsc.JobStageID = pit.JobStageID ' + @CR +
-                           '        AND jsc.TmcID = pitc.TmcID ' + @CR +
+                           '     ON jsc.JobStageID = pit.JobStageID ' + @CR +
+                           '         AND jsc.TmcID = pitc.TmcID ' + @CR +
                            ' WHERE pit.JobStageID = '+ cast(@JobStageID as varchar(max))+' ' + @CR +
-                           ' AND  ISNULL(pit.isDeleted,0) = 0 ' + @CR +
+                           '     AND  ISNULL(pit.isDeleted,0) = 0 ' + @CR +
                            ' IF object_id(''tempdb..#sborkag'') IS NOT NULL DROP TABLE #sborkag ' + @CR +
                             +  @querySelect  + @CR +
-                           '  DECLARE @inbox INT ' + @CR +
-                           '        ,@inboxColumn VARCHAR(20) ' + @CR +
+                           ' DECLARE @inbox INT,@inboxColumn VARCHAR(20) ' + @CR +
                            ' SELECT TOP 1 ' + @CR +
                            '     @inbox = c.TmcID ' + @CR +
-                           '        ,@inboxColumn = c.GroupColumnName ' + @CR +
-                           '     FROM #columng c ' + @CR +
-                           '     WHERE c.TypeID = 1 ' + @CR +
-                           '     ORDER BY c.SortOrder DESC ' + @CR +
-                           ' DECLARE @gYes1 INT ' + @CR +
-                           '           ,@gYes2 INT ' + @CR +
-                           '    SELECT ' + @CR +
-                           '        @gYes1 = COUNT(*) ' + @CR +
-                           '    FROM StorageData.pTMC_'+ cast(@OutputTmcID as varchar(max))+' t ' + @CR +
-                           '    WHERE t.ParentTMCID = @inbox ' + @CR +
-                           '    SELECT ' + @CR +
-                           '        @gYes2 = COUNT(g.ID) ' + @CR +
-                           '    FROM StorageData.pTMC_'+ cast(@OutputTmcID as varchar(max))+' t ' + @CR +
-                           '    JOIN StorageData.G_'+ cast(@JobStageID as varchar(max))+' g ' + @CR +
-                           '        ON g.Column_2 = t.ParentPTMCID ' + @CR +
-                           '            AND g.OperationID IS NULL ' + @CR +
-                           '            AND t.ParentTMCID = @inbox ' + @CR +
-                           '    IF (@gYes1 = @gYes2) ' + @CR +
-                           '        AND (@gYes1 = 0) ' + @CR +
-                           '    BEGIN ' + @CR
+                           '     ,@inboxColumn = c.GroupColumnName ' + @CR +
+                           ' FROM #columng c ' + @CR +
+                           ' WHERE c.TypeID = 1 ' + @CR +
+                           ' ORDER BY c.SortOrder DESC ' + @CR +
+                           ' DECLARE @gYes1 INT,@gYes2 INT ' + @CR +
+                           ' SELECT ' + @CR +
+                           '     @gYes1 = COUNT(*) ' + @CR +
+                           ' FROM StorageData.pTMC_'+ cast(@OutputTmcID as varchar(max))+' t ' + @CR +
+                           ' WHERE t.ParentTMCID = @inbox ' + @CR +
+                           ' SELECT ' + @CR +
+                           '     @gYes2 = COUNT(g.ID) ' + @CR +
+                           ' FROM StorageData.pTMC_'+ cast(@OutputTmcID as varchar(max))+' t ' + @CR +
+                           '     JOIN StorageData.G_'+ cast(@JobStageID as varchar(max))+' g ' + @CR +
+                           '         ON g.Column_2 = t.ParentPTMCID ' + @CR +
+                           '             AND g.OperationID IS NULL ' + @CR +
+                           '             AND t.ParentTMCID = @inbox ' + @CR +
+                           ' IF (@gYes1 = @gYes2) AND (@gYes1 = 0) ' + @CR +
+                           ' BEGIN ' + @CR + 
+                           ' IF OBJECT_ID(''[StorageData].['+@PalletsDetailsTableName+']'') IS NOT NULL ' + @CR +
+                           '     DELETE [StorageData].['+@PalletsDetailsTableName+'] WHERE id IN ' + @CR +
+                           '     ( ' + @CR +
+                           '     SELECT ' + @CR +
+                           '         pd.id ' + @CR +
+                           '     FROM #sborkag p ' + @CR +
+                           '         LEFT JOIN [StorageData].['+@PalletsDetailsTableName+'] pd ON pd.BoxID = p.id ' + @CR +
+                           '     WHERE p.tmcid = (SELECT c.tmcid FROM #columng c WHERE c.sortorder = 1) ' + @CR +
+                           '     ) ' + @CR +
+                           ' IF OBJECT_ID(''[StorageData].['+@PalletsTableName+']'') IS NOT NULL ' + @CR +
+                           '     DELETE [StorageData].['+@PalletsTableName+'] WHERE id NOT IN ' + @CR +
+                           '     ( ' + @CR +
+                           '     SELECT p.id FROM [StorageData].['+@PalletsTableName+'] p  ' + @CR +
+                           '     INNER JOIN [StorageData].['+@PalletsDetailsTableName+'] pd ON pd.PalletID = p.id ' + @CR +
+                           '     ) ' + @CR 
 
 
         SET @queryDel =  @queryDel +
-                        ' DELETE FROM StorageData.G_'+ cast(@JobStageID as varchar(max))+' ' + @CR +
-                        ' DELETE FROM manufacture.PTmcGroups WHERE Jobstageid = '+ cast(@JobStageID as varchar(max))+' ' + @CR +
-                        ' UPDATE manufacture.PTmcOperations SET isCanceled = 1 WHERE Jobstageid = '+ cast(@JobStageID as varchar(max))+ @CR +
-                        ' END ' + @CR +
-                        ' ELSE RAISERROR (''Некоторые материалами были упакованы - удаление невозможно.'', 16, 1) '+ @CR +
-                        ' COMMIT' + @CR +
-                        ' END TRY' + @CR +
-                        ' BEGIN CATCH' + @CR +
-                        '    SET @Err = @@ERROR;' + @CR +
-                        '    IF @@TRANCOUNT > 0 ROLLBACK TRAN' + @CR +
-                        '    EXEC sp_RaiseError @ID = @Err;' + @CR +
-                        ' END CATCH' + @CR
+                           ' DELETE FROM StorageData.G_'+ cast(@JobStageID as varchar(max))+' ' + @CR +
+                           ' DELETE FROM manufacture.PTmcGroups WHERE Jobstageid = '+ cast(@JobStageID as varchar(max))+' ' + @CR +
+                           ' UPDATE manufacture.PTmcOperations SET isCanceled = 1 WHERE Jobstageid = '+ cast(@JobStageID as varchar(max))+ @CR +
+                           ' END ' + @CR +
+                           ' ELSE RAISERROR (''Некоторые материалами были упакованы - удаление невозможно.'', 16, 1) '+ @CR +
+                           ' COMMIT' + @CR +
+                           ' END TRY' + @CR +
+                           ' BEGIN CATCH' + @CR +
+                           '     SET @Err = @@ERROR;' + @CR +
+                           '     IF @@TRANCOUNT > 0 ROLLBACK TRAN' + @CR +
+                           '     EXEC sp_RaiseError @ID = @Err;' + @CR +
+                           ' END CATCH' + @CR
 
         SET @query = @querySelect + @queryDel
 
         EXEC(@query)
---        SELECT @query
+        --SELECT @query
                
 END
 GO

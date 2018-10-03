@@ -1,7 +1,7 @@
 ﻿SET QUOTED_IDENTIFIER, ANSI_NULLS ON
 GO
 /*$Create:     Zapadinskiy Anatoliy$    $Create date:   ??.??.2013$*/
-/*$Modify:     Poliatykin Oleksii$    $Modify date:   28.09.2018$*/
+/*$Modify:     Poliatykin Oleksii$    $Modify date:  03.10.2018$*/
 /*$Version:    10.00$   $Description: Импорт данных$*/
 CREATE PROCEDURE [manufacture].[sp_TMCBulkInsert]
   @Separator varchar(1),
@@ -23,10 +23,14 @@ BEGIN
             @BatchColumnName varchar(256), @GroupColumnName varchar(256), @pTmcID int, @SpTmcID varchar(11), @i tinyint,
             @SSkipRow varchar(2), @Query varchar(4000), @QueryS varchar(4000), @QueryI varchar(4000), @TableName varchar(50),
             @TableNameHistory varchar(50), @GTableName varchar(50), @Err Int, @Time datetime, @TimeDetail varchar(MAX),            
-            @Count int, @isInserted bit, @TypeID tinyint
-            
-	DECLARE @T TABLE(ID int)
-    
+            @Count int, @isInserted bit, @TypeID tinyint,  @PalletsTableName varchar(50), @PalletsDetailsTableName varchar(50),
+            @BoxTMC varchar(30), @BoxColumnName varchar(256), @Employee varchar(30)
+
+    DECLARE @T TABLE(ID int)
+           
+    SET @PalletsTableName = 'Pallets_' + Convert(varchar(30), @JobStageID)
+    SET @PalletsDetailsTableName = 'PalletsDetails_' + Convert(varchar(30), @JobStageID)
+    SET @Employee = Convert(varchar(30), @EmployeeID)
     BEGIN TRAN
     BEGIN TRY  
         
@@ -250,6 +254,36 @@ BEGIN
         DEALLOCATE CRSI        
         
         /*-------------------------------------*/
+        /*-STAGE Palets. Insert data of pallets*/
+        /*-------------------------------------*/
+       if  @PalleteColumnName <>'' 
+       BEGIN       
+           EXEC manufacture.sp_Pallets_CreateTables @JobStageID
+        
+           SELECT
+               @BoxTMC =   Convert(varchar(30), jsc.TmcID)
+               ,@BoxColumnName = ic.ColumnName
+           FROM manufacture.JobStageChecks jsc
+               INNER JOIN manufacture.PTmcOperations o on o.JobStageID = jsc.JobStageID and o.OperationTypeID = 1  and o.isCanceled = 0 
+               INNER JOIN manufacture.PTmcImportColumns ic on ic.OperationID = o.id and jsc.ImportTemplateColumnID = ic.ImportTemplateColumnID
+           WHERE jsc.JobStageID = @JobStageID and  jsc.SortOrder = 1
+                
+           EXEC('
+                insert into StorageData.'+@PalletsTableName+' (VALUE) 
+                (select i.'+@PalleteColumnName+' from #TMCImportFile i group by i.'+@PalleteColumnName+')            
+                insert into StorageData.'+@PalletsDetailsTableName+' (PalletID, BoxID, Status, ModifyEmployeeID, ModifyDate)
+                (
+                SELECT 
+                    p.id as PalletID, box.id As BoxID, 0, '+  @Employee +', GetDate()
+                from #TMCImportFile i 
+                    left join StorageData.pTMC_'+@BoxTMC+'   box on box.Value = i.'+@BoxColumnName+'
+                    left JOIN StorageData.'+@PalletsTableName+' p on p.Value = i.'+@PalleteColumnName+'
+                group by box.id, p.id
+                )             
+                ')
+        END
+    
+        /*-------------------------------------*/
         /*-STAGE 4. Delete all temporatly data.*/
         /*-------------------------------------*/
         
@@ -281,8 +315,8 @@ BEGIN
         EXEC sp_RaiseError @ID = @Err
     END CATCH        
 
-  INSERT INTO manufacture.Test([Value]) 
-  VALUES (@TimeDetail)    
+    INSERT INTO manufacture.Test([Value]) 
+    VALUES (@TimeDetail)    
     
     SELECT null
 END

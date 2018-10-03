@@ -1,2 +1,8 @@
 ﻿CREATE SCHEMA [shifts] AUTHORIZATION [dbo]
 GO
+
+GRANT
+  EXECUTE,
+  VIEW DEFINITION
+ON SCHEMA :: [shifts] TO [SPEKL\ChepelN]
+GO

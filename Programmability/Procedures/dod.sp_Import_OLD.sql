@@ -15,7 +15,7 @@ BEGIN
   SET @TableName = 'XCardsData_' + Convert(varchar(30), @JobsSettingsID)
   SET @TableNameDetails = 'XCardsData_' + Convert(varchar(30), @JobsSettingsID)+'Details'
 
---  IF @FileType IN (1,2,3,5,6,8)
+  IF @FileType IN (1,2,3,5,6,8)
   BEGIN
 
     EXEC ('

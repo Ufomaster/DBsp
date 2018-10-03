@@ -12,3 +12,6 @@ BEGIN
     RETURN @DateWithoutTime
 END
 GO
+
+GRANT EXECUTE ON [dbo].[fn_DateCropTime] TO [QlikView]
+GO
